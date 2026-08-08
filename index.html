@@ -22,8 +22,9 @@
     color:var(--text);
     min-height:100vh;
     display:flex;
-    align-items:flex-start;
-    justify-content:center;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
     padding:32px 16px;
   }
   .app{
@@ -200,6 +201,23 @@
   .section-title .dot{
     width:7px;height:7px;border-radius:50%;background:var(--accent);
   }
+  .credit{
+    width:100%;
+    max-width:1180px;
+    text-align:center;
+    margin-top:22px;
+    font-size:12.5px;
+    color:var(--muted);
+    letter-spacing:.02em;
+  }
+  .credit a{
+    color:var(--accent);
+    text-decoration:none;
+    font-weight:600;
+  }
+  .credit a:hover{
+    text-decoration:underline;
+  }
 </style>
 </head>
 <body>
@@ -226,6 +244,14 @@
     <div class="field">
       <label>Your text</label>
       <input type="text" id="labelText" placeholder="Type here..." maxlength="40">
+    </div>
+
+    <div class="field">
+      <label>Text size</label>
+      <div class="range-row">
+        <input type="range" id="textSize" min="10" max="140" value="50" step="1">
+        <span class="range-val" id="textSizeVal">50px</span>
+      </div>
     </div>
 
     <div class="field">
@@ -282,6 +308,8 @@
 
 </div>
 
+<div class="credit">Website made by <a href="https://www.tiktok.com/@rblx3editsfx" target="_blank" rel="noopener">@rblx3editsfx</a> on TikTok</div>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Pacifico&family=Bebas+Neue&display=swap" rel="stylesheet">
 
@@ -306,6 +334,8 @@ const strokeColorInput = document.getElementById('strokeColor');
 const strokeColorHex = document.getElementById('strokeColorHex');
 const strokeWidthInput = document.getElementById('strokeWidth');
 const strokeWidthVal = document.getElementById('strokeWidthVal');
+const textSizeInput = document.getElementById('textSize');
+const textSizeVal = document.getElementById('textSizeVal');
 const downloadBtn = document.getElementById('downloadBtn');
 const resetBtn = document.getElementById('resetBtn');
 const canSwatchesWrap = document.getElementById('canSwatches');
@@ -412,22 +442,29 @@ function render(){
   const [tH, tS] = rgbToHsl(target.r, target.g, target.b);
   const isDefaultWhite = canColorInput.value.toLowerCase() === '#ffffff';
 
+  // The metallic lid/pull-tab sits above this row (fraction of image height) -
+  // never recolor above it, so the silver top stays silver.
+  const ROOF_CUTOFF = Math.round(h * 0.18);
+
   if(!isDefaultWhite){
     const imgData = workCtx.getImageData(0,0,w,h);
     const d = imgData.data;
-    for(let i=0;i<d.length;i+=4){
-      const r=d[i], g=d[i+1], b=d[i+2];
-      const [h0,s0,l0] = rgbToHsl(r,g,b);
-      // Only touch pixels that are light and fairly desaturated (the can body),
-      // leave the dog, shadows and dark background alone.
-      if(l0 > 0.42 && s0 < 0.25){
-        const newL = 0.14 + l0*0.86; // keep shading, avoid pure black/white edge cases
-        const [nr,ng,nb] = hslToRgb(tH, Math.max(tS,0.35), newL);
-        // blend factor so texture noise still reads naturally
-        const blend = Math.min(1, (l0-0.42)/0.15);
-        d[i]   = r + (nr-r)*blend;
-        d[i+1] = g + (ng-g)*blend;
-        d[i+2] = b + (nb-b)*blend;
+    for(let y=ROOF_CUTOFF; y<h; y++){
+      for(let x=0; x<w; x++){
+        const i = (y*w + x) * 4;
+        const r=d[i], g=d[i+1], b=d[i+2];
+        const [h0,s0,l0] = rgbToHsl(r,g,b);
+        // Only touch pixels that are light and fairly desaturated (the can body),
+        // leave the dog, shadows and the dark gray background alone.
+        if(l0 > 0.52 && s0 < 0.25){
+          const newL = 0.14 + l0*0.86; // keep shading, avoid pure black/white edge cases
+          const [nr,ng,nb] = hslToRgb(tH, Math.max(tS,0.35), newL);
+          // blend factor so texture noise still reads naturally
+          const blend = Math.min(1, (l0-0.52)/0.15);
+          d[i]   = r + (nr-r)*blend;
+          d[i+1] = g + (ng-g)*blend;
+          d[i+2] = b + (nb-b)*blend;
+        }
       }
     }
     workCtx.putImageData(imgData, 0, 0);
@@ -446,16 +483,12 @@ function render(){
     const cx = tx.x + tx.w/2;
     const cy = tx.y + tx.h/2;
 
-    let fontSize = tx.h * 0.85;
+    // Text size is user-controlled via the slider. The slider value is in
+    // on-screen pixels, so scale it up to the image's natural resolution.
+    const scaleFactor = w / (canvas.clientWidth || w);
+    const fontSize = parseInt(textSizeInput.value, 10) * scaleFactor;
     const family = fontPicker.value;
     ctx.font = `700 ${fontSize}px ${family}`;
-    let metrics = ctx.measureText(text);
-    const maxWidth = tx.w * 1.55; // allow it to run a bit wider than the original box
-    while(metrics.width > maxWidth && fontSize > 6){
-      fontSize -= 1;
-      ctx.font = `700 ${fontSize}px ${family}`;
-      metrics = ctx.measureText(text);
-    }
 
     const sw = parseInt(strokeWidthInput.value,10);
     if(sw > 0){
@@ -487,6 +520,10 @@ strokeWidthInput.addEventListener('input', ()=>{
   strokeWidthVal.textContent = strokeWidthInput.value + 'px';
   render();
 });
+textSizeInput.addEventListener('input', ()=>{
+  textSizeVal.textContent = textSizeInput.value + 'px';
+  render();
+});
 labelTextInput.addEventListener('input', render);
 fontPicker.addEventListener('change', render);
 
@@ -501,6 +538,8 @@ resetBtn.addEventListener('click', ()=>{
   strokeColorHex.textContent = '#000000';
   strokeWidthInput.value = 0;
   strokeWidthVal.textContent = '0px';
+  textSizeInput.value = 50;
+  textSizeVal.textContent = '50px';
   render();
 });
 
