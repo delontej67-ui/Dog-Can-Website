@@ -444,23 +444,33 @@ function render(){
 
   // The metallic lid/pull-tab sits above this row (fraction of image height) -
   // never recolor above it, so the silver top stays silver.
-  const ROOF_CUTOFF = Math.round(h * 0.18);
+  const ROOF_CUTOFF = Math.round(h * 0.135);
+  // The can body only occupies this x-range - keeps the dark gray backdrop
+  // (including its brighter corners) from ever being touched.
+  const BODY_LEFT = Math.round(w * 0.1875);
+  const BODY_RIGHT = Math.round(w * 0.797);
+  const BODY_BOTTOM = Math.round(h * 0.909);
+  // The puppy "window" cut into the can - excluded so whiskers and paw fur
+  // never pick up a color tint. (Fraction-of-image ellipse.)
+  const HOLE_CX = 0.4785 * w, HOLE_CY = 0.415 * h, HOLE_RX = 0.245 * w, HOLE_RY = 0.145 * h;
 
   if(!isDefaultWhite){
     const imgData = workCtx.getImageData(0,0,w,h);
     const d = imgData.data;
-    for(let y=ROOF_CUTOFF; y<h; y++){
-      for(let x=0; x<w; x++){
+    for(let y=ROOF_CUTOFF; y<BODY_BOTTOM; y++){
+      for(let x=BODY_LEFT; x<BODY_RIGHT; x++){
+        const dx = (x-HOLE_CX)/HOLE_RX, dy = (y-HOLE_CY)/HOLE_RY;
+        if(dx*dx + dy*dy <= 1) continue; // inside the puppy window - skip
         const i = (y*w + x) * 4;
         const r=d[i], g=d[i+1], b=d[i+2];
         const [h0,s0,l0] = rgbToHsl(r,g,b);
         // Only touch pixels that are light and fairly desaturated (the can body),
         // leave the dog, shadows and the dark gray background alone.
-        if(l0 > 0.52 && s0 < 0.25){
-          const newL = 0.14 + l0*0.86; // keep shading, avoid pure black/white edge cases
-          const [nr,ng,nb] = hslToRgb(tH, Math.max(tS,0.35), newL);
+        if(l0 > 0.40 && s0 < 0.30){
+          const newL = 0.12 + l0*0.88; // keep shading, avoid pure black/white edge cases
+          const [nr,ng,nb] = hslToRgb(tH, Math.max(tS,0.45), newL);
           // blend factor so texture noise still reads naturally
-          const blend = Math.min(1, (l0-0.52)/0.15);
+          const blend = Math.min(1, (l0-0.40)/0.12);
           d[i]   = r + (nr-r)*blend;
           d[i+1] = g + (ng-g)*blend;
           d[i+2] = b + (nb-b)*blend;
