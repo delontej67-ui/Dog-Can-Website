@@ -377,6 +377,23 @@ baseImage.onload = function(){
 };
 baseImage.src = IMG_SRC;
 
+// Precise boundary of the puppy "window" cut into the can, sampled directly
+// from the source photo (fraction-of-height y -> fraction-of-width left/right).
+// Used to keep whiskers, fur and the window's inner trim from ever being
+// pushed toward the chosen color.
+const HOLE_BOUNDS = [[0.2456,0.4561,0.5287],[0.2488,0.4203,0.5678],[0.252,0.3987,0.5869],[0.2552,0.3836,0.6021],[0.2584,0.37,0.614],[0.2616,0.3589,0.6244],[0.2648,0.3493,0.6332],[0.2679,0.3413,0.6411],[0.2711,0.3341,0.6483],[0.2743,0.3278,0.6539],[0.2775,0.3214,0.6603],[0.2807,0.3166,0.6651],[0.2839,0.3118,0.6699],[0.2871,0.307,0.6738],[0.2903,0.303,0.6778],[0.2935,0.2998,0.6818],[0.2967,0.2959,0.685],[0.2998,0.2935,0.6882],[0.303,0.2903,0.6906],[0.3062,0.2879,0.6938],[0.3094,0.2847,0.6962],[0.3126,0.2823,0.6986],[0.3158,0.2799,0.701],[0.319,0.2783,0.7026],[0.3222,0.2759,0.7049],[0.3254,0.2743,0.7065],[0.3285,0.2727,0.7081],[0.3317,0.2703,0.7097],[0.3349,0.2687,0.7113],[0.3381,0.2679,0.7129],[0.3413,0.2663,0.7145],[0.3445,0.2648,0.7161],[0.3477,0.2632,0.7169],[0.3509,0.2624,0.7185],[0.3541,0.2616,0.7193],[0.3573,0.26,0.7201],[0.3604,0.2592,0.7209],[0.3636,0.2584,0.7217],[0.3668,0.2576,0.7225],[0.37,0.2568,0.7233],[0.3732,0.256,0.7241],[0.3764,0.2552,0.7249],[0.3796,0.2544,0.7257],[0.3828,0.2544,0.7265],[0.386,0.2536,0.7265],[0.3892,0.2528,0.7273],[0.3923,0.2528,0.7273],[0.3955,0.252,0.7281],[0.3987,0.252,0.7281],[0.4019,0.2512,0.7281],[0.4051,0.2512,0.7289],[0.4083,0.2512,0.7289],[0.4115,0.2504,0.7289],[0.4147,0.2504,0.7289],[0.4179,0.2504,0.7289],[0.4211,0.2504,0.7289],[0.4242,0.2504,0.7289],[0.4274,0.2504,0.7289],[0.4306,0.2504,0.7289],[0.4338,0.2504,0.7289],[0.437,0.2504,0.7289],[0.4402,0.2512,0.7281],[0.4434,0.2512,0.7281],[0.4466,0.2512,0.7281],[0.4498,0.252,0.7273],[0.453,0.252,0.7273],[0.4561,0.2528,0.7265],[0.4593,0.2528,0.7257],[0.4625,0.2536,0.7257],[0.4657,0.2544,0.7249],[0.4689,0.2544,0.7241],[0.4721,0.2552,0.7233],[0.4753,0.256,0.7225],[0.4785,0.2568,0.7217],[0.4817,0.2576,0.7217],[0.4848,0.2584,0.7201],[0.488,0.2592,0.7193],[0.4912,0.2608,0.7185],[0.4944,0.2616,0.7177],[0.4976,0.2624,0.7161],[0.5008,0.264,0.7153],[0.504,0.2648,0.7137],[0.5072,0.2663,0.7129],[0.5104,0.2671,0.7113],[0.5136,0.2687,0.7097],[0.5167,0.2703,0.7081],[0.5199,0.2719,0.7065],[0.5231,0.2735,0.7049],[0.5263,0.2751,0.7033],[0.5295,0.2775,0.7018],[0.5327,0.2791,0.6994],[0.5359,0.2815,0.6978],[0.5391,0.2839,0.6954],[0.5423,0.2855,0.6938],[0.5455,0.2879,0.6914],[0.5486,0.2911,0.6882],[0.5518,0.2935,0.6858],[0.555,0.2967,0.6834],[0.5582,0.299,0.6802],[0.5614,0.3022,0.677],[0.5646,0.3054,0.6738],[0.5678,0.3094,0.6707],[0.571,0.3134,0.6667],[0.5742,0.3174,0.6635],[0.5774,0.3222,0.6595],[0.5805,0.3254,0.6595],[0.5837,0.3246,0.6539],[0.5869,0.3246,0.6539],[0.5901,0.3246,0.6555],[0.5933,0.3262,0.6555],[0.5965,0.3262,0.6539],[0.5997,0.3285,0.6515],[0.6029,0.3293,0.6523],[0.6061,0.3309,0.6499],[0.6093,0.3341,0.6475],[0.6124,0.3365,0.6459],[0.6156,0.3365,0.6435],[0.6188,0.3453,0.6411],[0.622,0.3541,0.63],[0.6252,0.3604,0.626],[0.6284,0.366,0.6188],[0.6316,0.3764,0.6148]];
+
+function holeBoundsAt(yFrac){
+  if(yFrac < HOLE_BOUNDS[0][0] || yFrac > HOLE_BOUNDS[HOLE_BOUNDS.length-1][0]) return null;
+  // find the closest sampled row (table is sampled every ~4px of a 1254px image)
+  let lo = 0, hi = HOLE_BOUNDS.length - 1;
+  while(lo < hi){
+    const mid = (lo+hi) >> 1;
+    if(HOLE_BOUNDS[mid][0] < yFrac) lo = mid+1; else hi = mid;
+  }
+  return HOLE_BOUNDS[lo];
+}
+
 function hexToRgb(hex){
   hex = hex.replace('#','');
   if(hex.length===3){ hex = hex.split('').map(c=>c+c).join(''); }
@@ -450,27 +467,35 @@ function render(){
   const BODY_LEFT = Math.round(w * 0.1875);
   const BODY_RIGHT = Math.round(w * 0.797);
   const BODY_BOTTOM = Math.round(h * 0.909);
-  // The puppy "window" cut into the can - excluded so whiskers and paw fur
-  // never pick up a color tint. (Fraction-of-image ellipse.)
-  const HOLE_CX = 0.4785 * w, HOLE_CY = 0.415 * h, HOLE_RX = 0.245 * w, HOLE_RY = 0.145 * h;
+  // Near the very bottom, the can silhouette and the background shadow between
+  // the legs get close in brightness - ramp the threshold up over this range
+  // so that gap never gets mistaken for can body.
+  const FADE_START = Math.round(h * 0.80);
 
   if(!isDefaultWhite){
     const imgData = workCtx.getImageData(0,0,w,h);
     const d = imgData.data;
     for(let y=ROOF_CUTOFF; y<BODY_BOTTOM; y++){
+      const yFrac = y / h;
+      const hb = holeBoundsAt(yFrac);
+      const holeLeft = hb ? hb[1]*w : -1;
+      const holeRight = hb ? hb[2]*w : -1;
+      let lThresh = 0.40;
+      if(y > FADE_START){
+        lThresh = 0.40 + ((y-FADE_START)/(BODY_BOTTOM-FADE_START)) * 0.16;
+      }
       for(let x=BODY_LEFT; x<BODY_RIGHT; x++){
-        const dx = (x-HOLE_CX)/HOLE_RX, dy = (y-HOLE_CY)/HOLE_RY;
-        if(dx*dx + dy*dy <= 1) continue; // inside the puppy window - skip
+        if(hb && x>=holeLeft && x<=holeRight) continue; // inside the puppy window - skip
         const i = (y*w + x) * 4;
         const r=d[i], g=d[i+1], b=d[i+2];
         const [h0,s0,l0] = rgbToHsl(r,g,b);
         // Only touch pixels that are light and fairly desaturated (the can body),
         // leave the dog, shadows and the dark gray background alone.
-        if(l0 > 0.40 && s0 < 0.30){
+        if(l0 > lThresh && s0 < 0.30){
           const newL = 0.12 + l0*0.88; // keep shading, avoid pure black/white edge cases
           const [nr,ng,nb] = hslToRgb(tH, Math.max(tS,0.45), newL);
           // blend factor so texture noise still reads naturally
-          const blend = Math.min(1, (l0-0.40)/0.12);
+          const blend = Math.min(1, (l0-lThresh)/0.12);
           d[i]   = r + (nr-r)*blend;
           d[i+1] = g + (ng-g)*blend;
           d[i+2] = b + (nb-b)*blend;
